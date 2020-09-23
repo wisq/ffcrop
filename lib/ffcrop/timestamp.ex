@@ -1,9 +1,14 @@
 defmodule Ffcrop.Timestamp do
   def parse(str) do
     case String.split(str, ":") do
-      [secs] -> parse_secs(secs)
-      [mins, secs] -> parse_int(mins) * 60 + parse_secs(secs)
-      [hrs, mins, secs] -> parse_int(hrs) * 3600 + parse_int(mins) * 60 + parse_secs(secs)
+      [secs] ->
+        parse_secs(secs)
+
+      [mins, secs] ->
+        parse_int(mins, "minutes") * 60 + parse_secs(secs)
+
+      [hrs, mins, secs] ->
+        parse_int(hrs, "hours") * 3600 + parse_int(mins, "minutes") * 60 + parse_secs(secs)
     end
   end
 
@@ -14,7 +19,9 @@ defmodule Ffcrop.Timestamp do
     end
   end
 
-  defp parse_int(str) do
+  defp parse_int(str, field) do
     String.to_integer(str)
+  rescue
+    ArgumentError -> raise ArgumentError, "Cannot parse #{field}: #{str}"
   end
 end
