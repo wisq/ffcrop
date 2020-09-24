@@ -1,9 +1,9 @@
 defmodule Ffcrop.CLI do
-  alias Ffcrop.Timestamp
+  alias Ffcrop.{Timestamp, Ffmpeg}
 
   def main(args) do
-    parse_args(args)
-    |> IO.inspect()
+    {{input, output}, options} = parse_args(args)
+    Ffmpeg.process(input, output, options)
   end
 
   @options [
