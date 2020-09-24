@@ -110,14 +110,14 @@ defmodule Ffcrop.Ffmpeg do
     }
   end
 
-  defp crop_args(file, %{stop: stop_arg, keyframe: mode}) do
+  defp crop_args(_file, %{stop: stop_arg, keyframe: _mode}) do
     {
       [],
       ["-t", Float.to_string(stop_arg)]
     }
   end
 
-  defp crop_args(file, %{keyframe: _mode}) do
+  defp crop_args(_file, %{keyframe: _mode}) do
     {[], []}
   end
 
