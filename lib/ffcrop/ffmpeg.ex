@@ -3,11 +3,42 @@ defmodule Ffcrop.Ffmpeg do
   alias Ffcrop.Ffprobe
   alias IO.ANSI
 
+  defmodule Progress do
+    defstruct(output: [])
+
+    def add(prog, str) do
+      report_time(str)
+      %Progress{prog | output: [str | prog.output]}
+    end
+
+    @time_regex ~r/ time=(?<time>[\d:\.]+) /
+
+    def report_time(str) do
+      case Regex.named_captures(@time_regex, str) do
+        %{"time" => t} -> IO.puts("Encoding: #{t}")
+        nil -> :noop
+      end
+    end
+  end
+
+  defimpl Collectable, for: Progress do
+    def into(original) do
+      fun = fn
+        thing, {:cont, str} -> Progress.add(thing, str)
+        thing, :done -> thing
+        _, :halt -> :ok
+      end
+
+      {original, fun}
+    end
+  end
+
   def process(input, output, options) do
     {start, stop} = crop_args(input, options)
 
     args =
       [
+        "-nostdin",
         start,
         "-i",
         input,
@@ -23,15 +54,15 @@ defmodule Ffcrop.Ffmpeg do
     ffmpeg = find_ffmpeg()
     Logger.debug("Running: #{ffmpeg} #{Enum.join(args, " ")}")
 
-    :exec.run(
-      [ffmpeg] ++ args,
-      [
-        :sync,
-        {:stdout, &exec_stdout/3},
-        {:stderr, &exec_stderr/3}
-      ]
+    IO.puts("")
+
+    System.cmd(
+      ffmpeg,
+      args,
+      into: %Progress{},
+      stderr_to_stdout: true
     )
-    |> exec_result()
+    |> cmd_result()
   end
 
   defp find_ffmpeg do
@@ -41,26 +72,23 @@ defmodule Ffcrop.Ffmpeg do
     end
   end
 
-  defp exec_stdout(:stdout, _, message) do
-    IO.write(:stdio, [ANSI.cyan(), message, ANSI.default_color()])
-  end
-
-  defp exec_stderr(:stderr, _, message) do
-    IO.write(:stderr, [ANSI.light_yellow(), message, ANSI.default_color()])
-  end
-
-  defp exec_result({:error, [exit_status: code]}) do
-    IO.puts(:stderr, "\n")
-    raise "ffmpeg exited with code #{code}"
-  end
-
-  defp exec_result({:ok, []}) do
+  defp cmd_result({%Progress{}, 0}) do
     IO.puts([
       "\n",
       ANSI.light_green(),
       "Success: ffmpeg exited normally.",
       ANSI.default_color()
     ])
+  end
+
+  defp cmd_result({%Progress{output: out}, code}) do
+    IO.puts(:stderr, [
+      ANSI.light_red(),
+      Enum.reverse(out),
+      ANSI.default_color()
+    ])
+
+    raise "ffmpeg exited with code #{code}"
   end
 
   defp crop_args(file, %{start: start_arg, stop: stop_arg, keyframe: mode}) do
