@@ -34,23 +34,7 @@ defmodule Ffcrop.Ffmpeg do
   end
 
   def process(input, output, options) do
-    {start, stop} = crop_args(input, options)
-
-    args =
-      [
-        "-nostdin",
-        start,
-        "-i",
-        input,
-        stop,
-        ["-map", "0:v:0"],
-        audio_args(options.audio),
-        ["-vcodec", "copy"],
-        ["-acodec", "copy"],
-        output
-      ]
-      |> List.flatten()
-
+    args = build_args(input, output, options)
     ffmpeg = find_ffmpeg()
     Logger.debug("Running: #{ffmpeg} #{Enum.join(args, " ")}")
 
@@ -70,6 +54,24 @@ defmodule Ffcrop.Ffmpeg do
       path when is_binary(path) -> path
       nil -> raise "Cannot find ffmpeg in $PATH"
     end
+  end
+
+  defp build_args(input, output, options) do
+    {start, stop} = crop_args(input, options)
+
+    [
+      "-nostdin",
+      start,
+      "-i",
+      input,
+      stop,
+      ["-map", "0:v:0"],
+      audio_args(options.audio),
+      ["-vcodec", "copy"],
+      ["-acodec", "copy"],
+      output
+    ]
+    |> List.flatten()
   end
 
   defp cmd_result({%Progress{}, 0}) do
