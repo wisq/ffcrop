@@ -101,6 +101,26 @@ defmodule Ffcrop.Ffmpeg do
     }
   end
 
+  defp crop_args(file, %{start: start_arg, keyframe: mode}) do
+    start_time = calculate_start(file, mode, start_arg)
+
+    {
+      ["-ss", Float.to_string(start_time)],
+      []
+    }
+  end
+
+  defp crop_args(file, %{stop: stop_arg, keyframe: mode}) do
+    {
+      [],
+      ["-t", Float.to_string(stop_arg)]
+    }
+  end
+
+  defp crop_args(file, %{keyframe: _mode}) do
+    {[], []}
+  end
+
   defp calculate_start(_file, :none, time) do
     Logger.info("Keyframe snapping disabled; using raw start time of #{time}.")
     time
